@@ -88,6 +88,7 @@ The app uses **PostgreSQL** when `DATABASE_URL` is set, and a local SQLite file 
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Postgres connection string (use the Render *internal* URL) |
+| `DB_SCHEMA` | Optional. Keeps the tables in their own schema (e.g. `homecare`) when sharing a database with another app |
 | `APP_SECRET` | Long random string used to sign logins. Changing it logs everyone out |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | First operations account, created when the database is empty. Change the password after first login |
 | `ADMIN_PHONE` | Optional, the admin's mobile number |

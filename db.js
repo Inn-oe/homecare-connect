@@ -137,6 +137,11 @@ function pgDriver(url) {
   types.setTypeParser(20, (v) => parseInt(v, 10)); // COUNT(*) is bigint; return a JS number
   const ssl = /\.render\.com|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false;
   const pool = new Pool({ connectionString: url, ssl, max: 10 });
+  // Optional DB_SCHEMA keeps this app's tables in their own schema, so it can share a
+  // database with another app without the tables mixing.
+  const schema = process.env.DB_SCHEMA;
+  if (schema && !/^[a-z_][a-z0-9_]*$/.test(schema)) throw new Error('DB_SCHEMA must be lowercase letters, digits or _');
+  if (schema) pool.on('connect', (client) => client.query(`SET search_path TO ${schema}`));
   const toPg = (sql) => {
     let i = 0;
     return sql.replace(/\?/g, () => '$' + ++i);
@@ -165,8 +170,11 @@ function pgDriver(url) {
       client.release();
     }
   };
+  db.prepareSchema = async () => {
+    if (schema) await db.exec(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+  };
   db.migrate = () => db.exec('ALTER TABLE providers ADD COLUMN IF NOT EXISTS available INTEGER NOT NULL DEFAULT 1');
-  db.kind = 'PostgreSQL';
+  db.kind = schema ? `PostgreSQL (schema ${schema})` : 'PostgreSQL';
   return db;
 }
 
@@ -317,6 +325,7 @@ async function seed() {
 }
 
 db.ready = (async () => {
+  await db.prepareSchema?.();
   await db.exec(SCHEMA);
   await db.migrate();
   await seed();
