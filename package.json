@@ -1,0 +1,19 @@
+{
+  "name": "homecare-connect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Home services platform for Zimbabwe: homeowners book, the company dispatches vetted partner providers.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "reset-db": "node -e \"require('fs').rmSync('data.db',{force:true})\" && node server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.13.1"
+  }
+}
