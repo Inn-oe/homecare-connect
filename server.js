@@ -204,15 +204,23 @@ app.get('/api/properties', requireRole('homeowner'), async (req, res) => {
 app.post('/api/properties', requireRole('homeowner'), async (req, res) => {
   const b = req.body || {};
   const zone = config.ZONES.includes(b.zone) ? b.zone : fail(400, 'Choose the area the property is in');
+  let mapsLink = str(b.maps_link, 'Google Maps link', { required: false, max: 500 });
+  if (mapsLink) {
+    if (!/^https?:\/\//i.test(mapsLink)) mapsLink = 'https://' + mapsLink;
+    let host = '';
+    try { host = new URL(mapsLink).hostname.toLowerCase(); } catch { fail(400, 'That Google Maps link does not look right'); }
+    if (!/(^|\.)(google\.[a-z.]+|goo\.gl|g\.co)$/.test(host)) fail(400, 'Please paste a Google Maps link');
+  }
   const { id } = await db.run(
-    'INSERT INTO properties (owner_id, label, address, suburb, zone, property_type, notes) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+    'INSERT INTO properties (owner_id, label, address, suburb, zone, property_type, notes, maps_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
     req.user.id,
     str(b.label, 'Name for this property', { max: 60 }),
     str(b.address, 'Street address', { max: 200 }),
     str(b.suburb, 'Suburb', { max: 80 }),
     zone,
     str(b.property_type, 'Property type', { max: 40 }),
-    str(b.notes, 'Notes', { required: false, max: 500 })
+    str(b.notes, 'Notes', { required: false, max: 500 }),
+    mapsLink || null
   );
   res.status(201).json(await db.get('SELECT * FROM properties WHERE id = ?', id));
 });
@@ -229,7 +237,7 @@ app.delete('/api/properties/:id', requireRole('homeowner'), async (req, res) => 
 
 const BOOKING_SELECT = `
   SELECT b.*, s.name AS service_name, s.pricing_type, s.unit_label, c.id AS category_id, c.name AS category_name,
-         p.label AS property_label, p.address, p.suburb, p.zone, p.property_type,
+         p.label AS property_label, p.address, p.suburb, p.zone, p.property_type, p.maps_link,
          h.name AS homeowner_name, h.phone AS homeowner_phone,
          pu.name AS provider_name, pu.phone AS provider_phone,
          pr.business_name AS provider_business, pr.rating_avg AS provider_rating, pr.rating_count AS provider_rating_count
@@ -267,6 +275,7 @@ function present(b, user) {
   if (user.role === 'provider' && !shared) {
     out.homeowner_phone = null;
     out.address = null;
+    out.maps_link = null;
   }
   return out;
 }

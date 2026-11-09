@@ -51,7 +51,7 @@ function fmtPhone(p) {
 }
 const telHref = (p) => `tel:${p}`;
 const waHref = (p, text = '') => `https://wa.me/${String(p).replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
-const mapsHref = (b) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+const mapsHref = (b) => b.maps_link || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
   [b.address, b.suburb, String(b.zone || '').split(' – ')[0], 'Zimbabwe'].filter(Boolean).join(', '))}`;
 
 async function api(path, { method = 'GET', body } = {}) {
@@ -1504,7 +1504,8 @@ async function accountPage() {
       <section class="section"><div class="section-title"><h2>My addresses</h2></div>
         ${S.properties.length ? `<div class="list">${S.properties.map((p) => `
           <div class="list-row"><span class="cat-icon" style="width:40px;height:40px;background:var(--brand-soft);color:var(--brand)">${icon('home', 20)}</span>
-            <div class="body"><div class="title">${esc(p.label)}</div><div class="sub">${esc(p.address)}, ${esc(p.suburb)} · ${esc(p.zone)}</div></div>
+            <div class="body"><div class="title">${esc(p.label)}</div><div class="sub">${esc(p.address)}, ${esc(p.suburb)} · ${esc(p.zone)}</div>
+              ${p.maps_link ? `<a class="small" href="${esc(p.maps_link)}" target="_blank" rel="noopener">${icon('pin', 14)} View on Google Maps</a>` : ''}</div>
             <button class="btn sm ghost danger" data-act="delete-property" data-id="${p.id}" aria-label="Remove ${esc(p.label)}">${icon('trash', 18)}</button></div>`).join('')}</div>`
           : '<div class="card flat center muted small">No addresses yet.</div>'}
         <button class="btn" style="margin-top:12px" data-act="modal-property">${icon('plus', 18)} Add address</button>
@@ -1562,6 +1563,7 @@ function propertyModal() {
         <label class="field"><span>Suburb</span><input name="suburb" required placeholder="e.g. Avondale"></label>
         <label class="field"><span>Area</span><select name="zone" required>${S.config.zones.map((z) => `<option>${esc(z)}</option>`).join('')}</select></label>
       </div>
+      <label class="field"><span>Google Maps link <span class="faint">(optional)</span></span><input name="maps_link" type="url" inputmode="url" placeholder="Paste a link from Google Maps &gt; Share"></label>
       <label class="field"><span>Directions <span class="faint">(optional)</span></span><textarea name="notes" placeholder="Landmarks, gate colour, dogs…" style="min-height:70px"></textarea></label>
       <div class="form-error"></div>
       <button class="btn primary lg block" style="margin-top:16px" type="submit">Save address</button>

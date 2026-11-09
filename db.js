@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS properties (
   suburb        TEXT NOT NULL,
   zone          TEXT NOT NULL,
   property_type TEXT NOT NULL,
-  notes         TEXT
+  notes         TEXT,
+  maps_link     TEXT
 );
 
 -- Partners. Status: pending (applied) -> active (approved) -> suspended.
@@ -173,7 +174,10 @@ function pgDriver(url) {
   db.prepareSchema = async () => {
     if (schema) await db.exec(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
   };
-  db.migrate = () => db.exec('ALTER TABLE providers ADD COLUMN IF NOT EXISTS available INTEGER NOT NULL DEFAULT 1');
+  db.migrate = async () => {
+    await db.exec('ALTER TABLE providers ADD COLUMN IF NOT EXISTS available INTEGER NOT NULL DEFAULT 1');
+    await db.exec('ALTER TABLE properties ADD COLUMN IF NOT EXISTS maps_link TEXT');
+  };
   db.kind = schema ? `PostgreSQL (schema ${schema})` : 'PostgreSQL';
   return db;
 }
@@ -212,6 +216,8 @@ function sqliteDriver(file) {
   db.migrate = async () => {
     const cols = raw.prepare('PRAGMA table_info(providers)').all();
     if (!cols.some((c) => c.name === 'available')) raw.exec('ALTER TABLE providers ADD COLUMN available INTEGER NOT NULL DEFAULT 1');
+    const pcols = raw.prepare('PRAGMA table_info(properties)').all();
+    if (!pcols.some((c) => c.name === 'maps_link')) raw.exec('ALTER TABLE properties ADD COLUMN maps_link TEXT');
   };
   db.kind = 'SQLite';
   return db;
