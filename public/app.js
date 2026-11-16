@@ -146,6 +146,7 @@ const ICONS = {
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   nav: '<path d="M3 11 21 3l-8 18-2-8z"/>',
   lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   // Category icons
   lawn: '<path d="M3 21h18"/><path d="M6 21c0-5-2-8-3-9M10 21c0-6 1-10 3-13M14 21c0-4 2-7 5-9M18 21c0-3-1-5-2-6"/>',
   yard: '<path d="M15 3 10.5 11"/><path d="M6.5 11h8l2 3.5-1.5 6.5H6l-1.5-6.5z"/><path d="M9 15v5M12 15v5"/>',
@@ -154,6 +155,7 @@ const ICONS = {
   sparkle: '<path d="M11 3l1.8 4.7 4.7 1.8-4.7 1.8L11 16l-1.8-4.7L4.5 9.5l4.7-1.8z"/><path d="M18.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/>',
   camera: '<path d="M2.5 7.5 15 4l2 6-12.5 3.5z"/><path d="m17 8 4-1v5l-3.5 1M9 12.5V17H4M4 15v4"/>',
   maid: '<circle cx="12" cy="5.5" r="2.8"/><path d="M8.5 11h7l2 10h-11z"/><path d="M10 11l2 3 2-3"/>',
+  hardhat: '<path d="M2 18h20"/><path d="M4 18v-3a8 8 0 0 1 16 0v3"/><path d="M10 7.3V5h4v2.3"/><path d="M10 7v5M14 7v5"/>',
 };
 const icon = (name, size = 20) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${name === 'star' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -164,6 +166,7 @@ const CAT_STYLE = {
   trees: ['tree', '#e2efe0', '#2e6b2a'],
   fumigation: ['bug', '#fdecea', '#b42318'],
   cleaning: ['sparkle', '#e6effb', '#1b5aa6'],
+  construction: ['hardhat', '#fff0dc', '#b45309'],
   cctv: ['camera', '#ecebfb', '#4636a3'],
   maids: ['maid', '#fbeaf3', '#a3326b'],
 };
@@ -171,6 +174,27 @@ function catIcon(catId, size = 46) {
   const [name, bg, fg] = CAT_STYLE[catId] || ['tag', '#eef1ef', '#5c6862'];
   return `<span class="cat-icon" style="background:${bg};color:${fg};width:${size}px;height:${size}px;border-radius:${Math.round(size / 3.6)}px">${icon(name, Math.round(size * 0.52))}</span>`;
 }
+// One-line summaries for the category cards, and extra words people search for.
+const CAT_BLURB = {
+  lawn: 'Mowing, edging and hedge trimming, with the cuttings cleared.',
+  yard: 'Yard clean-ups and refuse removal by the truckload.',
+  trees: 'Pruning, felling and stump removal by trained, insured teams.',
+  fumigation: 'Cockroaches, bedbugs, rodents, mosquitoes and termites.',
+  cleaning: 'Deep cleans, move-in cleans, carpets, sofas and mattresses.',
+  construction: "Builders' dust, cement and paint cleared so you can move in.",
+  cctv: 'Camera systems installed and repaired, with phone viewing.',
+  maids: 'Vetted day maids, live-in maids, nannies and housekeepers.',
+};
+const CAT_KEYWORDS = {
+  lawn: 'garden gardener mow mowing lawn',
+  yard: 'garden rubbish refuse sweep',
+  trees: 'tree branches chainsaw',
+  fumigation: 'pests pest insects cockroaches rats mice mosquitoes bed bugs spray',
+  cleaning: 'cleaner clean wash couch upholstery spring',
+  construction: 'builders builder building after construction renovation renovations new house handover dust cement paint site',
+  cctv: 'camera cameras security dvr alarm',
+  maids: 'maid helper domestic worker nanny housekeeper housegirl',
+};
 const logoMark = () => `<span class="logo-mark">${icon('home', 20)}</span>`;
 
 // ---------------------------------------------------------------------------
@@ -293,7 +317,7 @@ const supportLink = (text = 'WhatsApp support') =>
 
 async function boot() {
   S.config = await api('/config');
-  document.title = S.config.company;
+  document.title = `${S.config.company} · Trusted home services in Zimbabwe`;
   if (S.token) {
     try {
       const me = await api('/me');
@@ -480,64 +504,194 @@ function renderPublic([page = '', id]) {
     return go('signup');
   }
   const views = { login: loginPage, signup: signupPage, partner: partnerPage, services: () => publicCategory(id) };
-  const body = (views[page] || landingPage)();
+  const view = page === 'services' && !findCategory(id) ? null : views[page];
+  const landing = !view;
+  const sections = [['services', 'Services'], ['why', 'Why us'], ['how', 'How it works'], ['areas', 'Areas'], ['faq', 'FAQ']];
   $('#app').innerHTML = `
     <header class="header landing-header">
       <a class="logo" href="#/">${logoMark()}<span>${esc(S.config.company)}</span></a>
+      ${landing ? `<nav class="landing-nav">${sections.map(([target, label]) =>
+        `<a href="#/" data-act="scroll" data-target="${target}">${label}</a>`).join('')}<a href="#/partner">Become a partner</a></nav>` : ''}
       <div class="me">
         ${page !== 'login' ? '<a class="btn sm ghost" href="#/login">Log in</a>' : ''}
-        ${page !== 'signup' ? '<a class="btn sm primary" href="#/signup">Sign up</a>' : ''}
+        ${page !== 'signup' ? `<a class="btn sm primary" href="#/signup">${landing ? 'Book now' : 'Sign up'}</a>` : ''}
       </div>
     </header>
-    <main>${body}</main>`;
+    <main class="${landing ? 'landing' : ''}">${(view || landingPage)()}</main>
+    <a class="wa-fab" href="${waHref(S.config.supportPhone, `Hi ${S.config.company}, I'd like to book a service.`)}" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp">${icon('chat', 22)}<span>WhatsApp us</span></a>`;
   window.scrollTo(0, 0);
 }
 
+function catFrom(c) {
+  const prices = c.services.filter((s) => s.pricing_type !== 'quote').flatMap((s) => s.options.map((o) => o.price));
+  return prices.length ? `From ${money(Math.min(...prices))}` : 'Free quote';
+}
+
 function catGrid(base) {
-  return `<div class="cat-grid">${S.catalog.map((c) => `
-    <a class="cat-tile" href="#/${base}/${c.id}">${catIcon(c.id)}<span>${esc(c.name)}<br><small>${c.services.length} services</small></span></a>`).join('')}</div>`;
+  return `<div class="svc-grid">${S.catalog.filter((c) => c.services.length).map((c) => `
+    <a class="svc-card" href="#/${base}/${c.id}">
+      ${catIcon(c.id, 48)}
+      <span class="body"><strong>${esc(c.name)}</strong><span class="desc">${esc(CAT_BLURB[c.id] || `${c.services.length} services`)}</span></span>
+      <span class="foot"><span class="from">${catFrom(c)}</span><span class="go">${icon('arrow', 16)}</span></span>
+    </a>`).join('')}</div>`;
+}
+
+const POPULAR = ['Post-construction clean (new house)', 'Grass cutting', 'Home deep cleaning', 'Bedbug treatment', 'Day maid (one-off help)'];
+function popularChips() {
+  const hits = POPULAR.map((name) => allServices().find((s) => s.name === name)).filter(Boolean);
+  if (!hits.length) return '';
+  return `<div class="popular"><span>Popular:</span>${hits.map((s) =>
+    `<a href="#/book/${s.id}">${esc(s.name.replace(/\s*\(.*\)$/, ''))}</a>`).join('')}</div>`;
 }
 
 function landingPage() {
+  const company = esc(S.config.company);
+  const zones = S.config.zones;
+  const towns = [...new Set(zones.map((z) => z.split(' – ')[0]))];
+  const build = findCategory('construction');
+  const wa = waHref(S.config.supportPhone, `Hi ${S.config.company}, I'd like to book a service.`);
+  const payNames = Object.values(S.config.paymentMethods);
+  const payList = `${payNames.slice(0, -1).join(', ')} or ${payNames.at(-1).toLowerCase()}`;
+  const step = (cls) => `<div class="step ${cls}"><div class="dot">${cls === 'done' ? icon('check', 14) : ''}</div>`;
+
+  const why = [
+    ['shield', 'Checked before they are sent', 'Our team checks every partner\'s national ID and police clearance, plus licences for fumigation, tree work, CCTV and maids.'],
+    ['tag', 'You see the price first', 'Fixed USD prices are shown before you book. Bigger jobs start with a free site visit and a quote you can accept or decline.'],
+    ['nav', 'Follow the job live', 'See who is coming, when they are on the way and when the work starts, from your phone, wherever you are.'],
+    ['cash', 'Pay your way', `${payList}. Mobile money and bank payments go to the company, not to a stranger.`],
+    ['star', 'Rated after every job', 'You rate every visit. Partners with the best ratings are offered jobs first.'],
+    ['chat', 'Real people to help', 'If something is not right, report it in the app or WhatsApp us. Our team calls you and the partner to put it right.'],
+  ];
+
+  const faq = [
+    ['How do you choose your partners?', 'Every partner applies with their national ID and the services they offer. Before they get a single job, our operations team calls them and checks their ID, police clearance and any certificates the work needs. After each job the customer rates them, and that rating decides who is offered work first.'],
+    ['How much will my job cost?', 'Most services have a fixed USD price that you see before you book. Jobs that depend on the site, such as tree felling, CCTV installations, termite treatment and large post-construction cleans, start with a free site visit and a quote. The job only goes ahead if you accept the quote.'],
+    ['How do I pay?', `You choose when you book: ${payList}. For mobile money and bank payments you pay the company and enter the transaction reference in the app. For cash, you pay the partner when the job is done.`],
+    ['What if I am not happy with the work?', 'Do not confirm the job. Tap "Report a problem" on the booking and tell us what went wrong. Our team will call you and the partner, and either have the work put right or record a refund.'],
+    ['Can I cancel a booking?', 'Yes. Cancelling is free until your partner is on the way. To move a booking to another day or time, send us a WhatsApp message.'],
+    ['Do I need to be at home?', 'Someone should be there to open up and show the partner what needs doing. You can follow the job from your phone from anywhere, so a relative, caretaker or the builder can let the team in.'],
+  ];
+
   return `
     <section class="hero">
-      <h1>Home services you can trust, across Zimbabwe</h1>
-      <p>Garden, cleaning, fumigation, CCTV and vetted house maids. Book in minutes, and we send a checked, rated professional to your door.</p>
-      <div class="btn-row">
-        <a class="btn lg light" href="#/signup">Book a service</a>
-        <a class="btn lg outline" href="#/login">I have an account</a>
-      </div>
-      <div class="trust">
-        <span>${icon('shield', 18)} ID & police-checked partners</span>
-        <span>${icon('tag', 18)} Clear prices upfront</span>
-        <span>${icon('cash', 18)} EcoCash, OneMoney, InnBucks or cash</span>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title"><h2>What do you need?</h2></div>
-      ${catGrid('services')}
-    </section>
-
-    <section class="section">
-      <div class="section-title"><h2>How it works</h2></div>
-      <div class="how">
-        <div class="card"><div class="num">1</div><h3>Choose a service & time</h3><p class="muted small">See the price before you book. Bigger jobs like tree felling and CCTV get a free site visit and quote.</p></div>
-        <div class="card"><div class="num">2</div><h3>We send a vetted partner</h3><p class="muted small">You get their name, rating and phone number, and you can follow the job live.</p></div>
-        <div class="card"><div class="num">3</div><h3>Pay & rate</h3><p class="muted small">Pay by mobile money, bank or cash. If something isn't right, tell us and we'll fix it.</p></div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="card partner-cta">
+      <div class="wrap hero-grid">
         <div>
-          <h3>Gardener, cleaner, fumigator, technician or maid?</h3>
-          <p class="muted" style="margin:0">Join ${esc(S.config.company)} as a partner and get steady jobs near you.</p>
+          <span class="eyebrow"><i></i> Now booking in ${towns.length} towns across Zimbabwe</span>
+          <h1>Home services you can <em>trust</em>, booked in minutes.</h1>
+          <p class="lead">Cleaning, post-construction clean-ups, gardens, fumigation, CCTV and vetted house maids. Clear prices in USD, checked professionals, and you can follow every job from your phone.</p>
+          <div class="hero-search">${icon('search', 20)}
+            <input type="search" data-search aria-label="Search services" placeholder="What do you need done? e.g. builders' clean, bedbugs"></div>
+          <div id="search-results" class="hero-results"></div>
+          ${popularChips()}
+          <div class="btn-row">
+            <a class="btn lg light" href="#/signup">Book a service ${icon('arrow', 18)}</a>
+            <a class="btn lg outline" href="${wa}" target="_blank" rel="noopener">${icon('chat', 18)} Book on WhatsApp</a>
+          </div>
+          <div class="trust">
+            <span>${icon('shield', 18)} ID & police-checked partners</span>
+            <span>${icon('tag', 18)} Prices shown upfront</span>
+            <span>${icon('cash', 18)} EcoCash, InnBucks or cash</span>
+          </div>
         </div>
-        <a class="btn primary" href="#/partner">Apply as a partner</a>
+        <div class="hero-art" aria-hidden="true">
+          <div class="mock">
+            <span class="mock-tag">Example booking</span>
+            <div class="hero-status">${catIcon(build ? 'construction' : 'cleaning', 48)}
+              <div style="flex:1;min-width:0"><strong>${build ? 'Post-construction clean' : 'Home deep cleaning'}</strong>
+                <div class="muted small">Tomorrow, 9:00 am · Borrowdale</div><span class="pill blue">On the way</span></div></div>
+            <div class="track-steps">${step('done')}Booked</div>${step('done')}Assigned</div>${step('current')}On the way</div>${step('')}Working</div>${step('')}Done</div></div>
+            <div class="mock-person"><span class="avatar">TM</span>
+              <div><strong>Tendai M.</strong><div class="small"><span class="stars-inline">★ 4.9</span> <span class="muted">· Team of 4</span></div></div>
+              <span class="mock-btn">${icon('phone', 16)}</span><span class="mock-btn wa">${icon('chat', 16)}</span></div>
+          </div>
+          <div class="float f1">${icon('shield', 18)}<div><strong>ID & police checked</strong><span>Verified by our team</span></div></div>
+          <div class="float f2">${icon('check', 18)}<div><strong>Payment received</strong><span>EcoCash · ref HC1042</span></div></div>
+        </div>
       </div>
     </section>
-    <p class="footer">© ${new Date().getFullYear()} ${esc(S.config.company)} · Need help? ${supportLink('WhatsApp us')}</p>`;
+
+    <div class="strip"><div class="wrap">
+      <div class="item"><b>${S.catalog.length}</b><span>service categories</span></div>
+      <div class="item"><b>${allServices().length}</b><span>services you can book</span></div>
+      <div class="item"><b>${zones.length}</b><span>areas covered</span></div>
+      <div class="item"><b>7 days</b><span>a week, from 7 am</span></div>
+    </div></div>
+
+    <section class="band" id="services"><div class="wrap">
+      <div class="band-head"><span class="eyebrow">Our services</span><h2>What do you need done?</h2>
+        <p>Choose a category to see every option and its price. No account needed to browse.</p></div>
+      ${catGrid('services')}
+    </div></section>
+
+    ${build ? `<section class="band" style="padding-top:0"><div class="wrap"><div class="feature">
+      <div class="copy">
+        <span class="tag-new">New</span>
+        <h2>Just finished building or renovating?</h2>
+        <p>Builders leave dust in every cupboard, cement on the tiles and paint on the windows. Our post-construction teams clear it all, so the house is ready to hand over or move into.</p>
+        <div class="price-tags">${build.services.map((s) => { const p = fromPrice(s); return `<a href="#/book/${s.id}"><b>${p.main}${p.sub && s.pricing_type !== 'quote' ? ` ${esc(p.sub)}` : ''}</b>${esc(s.name.replace(/\s*\(.*\)$/, ''))}</a>`; }).join('')}</div>
+        <div class="btn-row">
+          <a class="btn lg light" href="#/services/construction">See post-construction services</a>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>What a handover clean covers</h3>
+        <ul class="checklist">
+          ${['Dust removed from walls, ceilings, lights and fittings', 'Cement, grout and paint taken off tiles and floors', 'Windows, frames, tracks and sills washed', 'Cupboards and wardrobes cleaned inside and out', 'Bathrooms and kitchen scrubbed and sanitised', 'Rubble and packaging loaded and removed, if you need it']
+            .map((t) => `<li>${icon('check', 14)}<span>${t}</span></li>`).join('')}
+        </ul>
+      </div>
+    </div></div></section>` : ''}
+
+    <section class="band alt" id="why"><div class="wrap">
+      <div class="band-head center"><span class="eyebrow">Why ${company}</span><h2>Letting someone into your home takes trust</h2>
+        <p>So we built the service around knowing who is coming, what it costs and what happens if it goes wrong.</p></div>
+      <div class="why">${why.map(([ic, title, text]) => `
+        <div class="card"><div class="ic">${icon(ic, 22)}</div><h3>${title}</h3><p>${esc(text)}</p></div>`).join('')}</div>
+    </div></section>
+
+    <section class="band" id="how"><div class="wrap">
+      <div class="band-head center"><span class="eyebrow">How it works</span><h2>Booked in three steps</h2></div>
+      <div class="how">
+        <div class="step"><div class="num">1</div><h3>Choose a service and time</h3><p>Pick what you need, the day and the arrival time. You see the price before you confirm.</p></div>
+        <div class="step"><div class="num">2</div><h3>We send a vetted partner</h3><p>You get their name, rating and phone number, and you can watch the job progress live.</p></div>
+        <div class="step"><div class="num">3</div><h3>Pay and rate</h3><p>Pay by mobile money, bank or cash. Confirm the job is done and rate the work.</p></div>
+      </div>
+    </div></section>
+
+    <section class="band alt" id="areas"><div class="wrap areas">
+      <div class="band-head"><span class="eyebrow">Where we work</span><h2>${zones.length} areas and growing</h2>
+        <p>Partners are matched to jobs in the areas they cover, so the person we send is already nearby.</p>
+        <div class="pay-row">${payNames.map((n) => `<span>${esc(n)}</span>`).join('')}</div></div>
+      <div class="chips">${zones.map((z) => `<span class="chip">${icon('pin', 15)} ${esc(z)}</span>`).join('')}</div>
+    </div></section>
+
+    <section class="band" id="faq"><div class="wrap">
+      <div class="band-head center"><span class="eyebrow">Questions</span><h2>Good to know before you book</h2></div>
+      <div class="faq">${faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div>
+    </div></section>
+
+    <section class="band" style="padding-top:0"><div class="wrap"><div class="partner-band">
+      <div><h2>Do you clean, garden, fumigate or install CCTV?</h2>
+        <p>Join ${company} as a partner. Choose your services and areas, get job offers on your phone and be paid for every job you finish.</p></div>
+      <a class="btn primary lg" href="#/partner">Apply as a partner ${icon('arrow', 18)}</a>
+    </div></div></section>
+
+    <footer class="site-footer"><div class="wrap">
+      <div class="cols">
+        <div><a class="logo" href="#/">${logoMark()}<span>${company}</span></a>
+          <p style="max-width:300px">Vetted home service professionals for homes and businesses across Zimbabwe.</p></div>
+        <div><h4>Services</h4>${S.catalog.map((c) => `<a href="#/services/${c.id}">${esc(c.name)}</a>`).join('')}</div>
+        <div><h4>Company</h4>
+          <a href="#/" data-act="scroll" data-target="how">How it works</a>
+          <a href="#/" data-act="scroll" data-target="faq">Questions</a>
+          <a href="#/partner">Become a partner</a>
+          <a href="#/login">Log in</a></div>
+        <div><h4>Talk to us</h4>
+          <a href="${telHref(S.config.supportPhone)}">Call ${esc(fmtPhone(S.config.supportPhone))}</a>
+          <a href="${wa}" target="_blank" rel="noopener">WhatsApp us</a></div>
+      </div>
+      <div class="legal"><span>© ${new Date().getFullYear()} ${company}. All prices in USD.</span><span>Made for Zimbabwe</span></div>
+    </div></footer>`;
 }
 
 function publicCategory(catId) {
@@ -552,6 +706,7 @@ function categoryBody(c, bookBase) {
     fumigation: 'Our fumigation partners are licensed to handle pesticides. You will get safety instructions (when to leave the house and for how long) before the job.',
     trees: 'Tree work is done by insured, trained teams. A specialist visits first and gives you a free quote.',
     cctv: 'Certified technicians. Installations start with a free site survey and an itemised quote.',
+    construction: "Teams come equipped for builders' dust, cement and paint splashes. Book once the builders have finished and there is water on site. Large homes and commercial sites start with a free site visit and quote.",
   };
   return `
     <div class="wizard-head">${catIcon(c.id, 56)}<div><h1 style="margin:0">${esc(c.name)}</h1><p class="muted" style="margin:0">Choose a service to see options and book</p></div></div>
@@ -682,13 +837,13 @@ const H = {
     const hour = new Date().getHours();
     const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     return `
-      <h1>${greet}, ${esc(firstName(S.user.name))}</h1>
-      <p class="muted">What can we help you with today?</p>
-      <label class="field" style="position:relative;margin-top:6px">
-        <span class="hidden">Search services</span>
-        <input type="search" data-search placeholder="Search e.g. grass cutting, bedbugs, sofa, maid…" style="padding-left:42px">
-        <span class="faint" style="position:absolute;left:13px;top:13px">${icon('search', 20)}</span>
-      </label>
+      <div class="welcome">
+        <h1>${greet}, ${esc(firstName(S.user.name))}</h1>
+        <p>What can we help you with today?</p>
+        <div class="hero-search">${icon('search', 20)}
+          <input type="search" data-search aria-label="Search services" placeholder="Search e.g. grass cutting, builders' clean, bedbugs, maid…"></div>
+        ${popularChips()}
+      </div>
       <div id="search-results"></div>
       ${active.length ? `
         <section class="section">
@@ -730,20 +885,24 @@ const H = {
 
 function searchServices(q) {
   const box = $('#search-results');
-  const cats = $('#categories');
   if (!box) return;
+  const inHero = box.classList.contains('hero-results'); // landing page: results drop down under the search box
   const term = q.trim().toLowerCase();
-  cats?.classList.toggle('hidden', !!term);
+  if (!inHero) $('#categories')?.classList.toggle('hidden', !!term);
   if (!term) { box.innerHTML = ''; return; }
-  const hits = allServices().filter((s) => `${s.name} ${s.description} ${s.category.name}`.toLowerCase().includes(term));
-  box.innerHTML = `<div class="section">${hits.length
-    ? hits.map((s) => {
-      const p = fromPrice(s);
-      return `<a class="service-row" href="#/book/${s.id}">${catIcon(s.category.id, 40)}
-        <div class="body"><div class="title">${esc(s.name)}</div><div class="desc">${esc(s.category.name)}</div></div>
-        <div class="price">${p.main}<small>${esc(p.sub)}</small></div></a>`;
-    }).join('')
-    : emptyState('search', 'No matching services', `Try another word, or WhatsApp us and we'll help you find the right service.`)}</div>`;
+  const words = term.split(/\s+/);
+  const hits = allServices().filter((s) => {
+    const text = `${s.name} ${s.description} ${s.category.name} ${CAT_KEYWORDS[s.category.id] || ''}`.toLowerCase();
+    return words.every((w) => text.includes(w));
+  });
+  const rows = (inHero ? hits.slice(0, 5) : hits).map((s) => {
+    const p = fromPrice(s);
+    return `<a class="service-row" href="#/book/${s.id}">${catIcon(s.category.id, 40)}
+      <div class="body"><div class="title">${esc(s.name)}</div><div class="desc">${esc(s.category.name)}</div></div>
+      <div class="price">${p.main}<small>${esc(p.sub)}</small></div></a>`;
+  }).join('');
+  const body = hits.length ? rows : emptyState('search', 'No matching services', `Try another word, or WhatsApp us and we'll help you find the right service.`);
+  box.innerHTML = inHero ? body : `<div class="section">${body}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1556,7 +1715,7 @@ function propertyModal() {
       <div class="grid-2">
         <label class="field"><span>Name</span><input name="label" required placeholder="Home, Office, Mum's house"></label>
         <label class="field"><span>Type</span><select name="property_type">
-          <option>House</option><option>Flat / Apartment</option><option>Cluster / Townhouse</option><option>Office</option><option>Shop / Business</option><option>Farm / Plot</option></select></label>
+          <option>House</option><option>Flat / Apartment</option><option>Cluster / Townhouse</option><option>New build / Construction site</option><option>Office</option><option>Shop / Business</option><option>Farm / Plot</option></select></label>
       </div>
       <label class="field"><span>Street address</span><input name="address" required placeholder="House number and street name"></label>
       <div class="grid-2">
@@ -1584,6 +1743,7 @@ async function runAction(id, action, body = {}, success = 'Done') {
 const CLICKS = {
   logout,
   reload: () => route(),
+  scroll: (el) => document.getElementById(el.dataset.target)?.scrollIntoView({ behavior: 'smooth' }),
   'close-modal': closeModal,
   dialog(el) {
     const resolve = S.dialogResolve;
@@ -1635,7 +1795,7 @@ const CLICKS = {
       <h2>Finish job</h2>
       <form data-form="complete" data-id="${b.id}">
         <label class="field"><span>What did you do? <span class="faint">(optional)</span></span>
-          <textarea name="note" placeholder="${b.category_id === 'fumigation' ? 'Chemicals used, rooms treated, when the family can go back in' : b.category_id === 'cctv' ? 'Cameras installed, serial numbers, app login handed over' : 'Work done, anything the customer should know'}"></textarea></label>
+          <textarea name="note" placeholder="${b.category_id === 'fumigation' ? 'Chemicals used, rooms treated, when the family can go back in' : b.category_id === 'cctv' ? 'Cameras installed, serial numbers, app login handed over' : b.category_id === 'construction' ? 'Rooms cleaned, anything you could not remove, and any defects the owner should show the builder' : 'Work done, anything the customer should know'}"></textarea></label>
         ${b.payment_method === 'cash' ? `<label class="choice" style="margin-top:14px"><input type="checkbox" name="cash_collected"><span class="tick">${icon('check', 14)}</span>
           <div class="body"><div class="title">I collected ${money(b.price)} cash</div><div class="sub">Tick this once the customer has paid you</div></div></label>` : ''}
         <div class="form-error"></div>

@@ -235,6 +235,7 @@ const CATEGORIES = [
   ['trees', 'Tree Cutting', 'Public liability insurance and chainsaw/climbing safety training', 'How many trees, roughly how tall, and are they near power lines, walls or the house?'],
   ['fumigation', 'Fumigation & Pest Control', 'Pesticide applicator registration / EMA licence for hazardous substances', 'Which pests, where in the house, and are there children, pets or anyone with asthma?'],
   ['cleaning', 'Home, Carpet & Sofa Cleaning', null, 'Fabric type, stains, pets, or areas to focus on.'],
+  ['construction', 'Post-Construction Cleaning', null, 'New build or renovation? Rough size (rooms or m²), is there water and power on site, has the builder removed the rubble, and when is handover or move-in?'],
   ['cctv', 'CCTV Installation', 'CCTV / electrical installation certificate', 'How many cameras, indoor or outdoor, and do you want phone viewing?'],
   ['maids', 'House Maids & Domestic Help', 'Police clearance, medical certificate and two references', 'Duties (cleaning, cooking, laundry, childcare), live-in or live-out, number of children, preferred start date, salary budget, languages.'],
 ];
@@ -275,6 +276,14 @@ const SERVICES = [
     o(['Fabric seat', 8], ['Leather seat (clean & condition)', 10]), 0.2],
   ['cleaning', 'Mattress cleaning', 'Deep clean and sanitise mattresses.', 'unit', 'mattress',
     o(['Single', 12], ['Double / Queen / King', 18]), 0.2],
+  ['construction', 'Post-construction clean (new house)', "Full builders' clean before you move in: dust, cement and paint splashes removed from floors, tiles, windows, frames, cupboards and fittings.", 'fixed', null,
+    o(['1–2 bedrooms', 90], ['3 bedrooms', 130], ['4 bedrooms', 180], ['5+ bedrooms', 240]), 0.2],
+  ['construction', 'Post-renovation clean', 'After painting, tiling, a new kitchen or bathroom, or an extension. Only the rooms that were worked on.', 'unit', 'room',
+    o(['Bedroom, lounge or passage', 20], ['Kitchen or bathroom', 30]), 0.2],
+  ['construction', "Builders' rubble removal", 'Loading and legal disposal of bricks, broken tiles, cement bags, off-cuts and packaging.', 'unit', 'truckload',
+    o(['Per truckload', 40]), 0.2],
+  ['construction', 'Floor & tile restoration', 'Cement haze, grout and paint removed from tiles and floors, then machine scrubbed and polished.', 'quote', null, [], 0.2],
+  ['construction', 'Commercial & large-site handover clean', 'Offices, shops, lodges, blocks of flats and large homes. Cleaned to handover standard for the contractor or owner.', 'quote', null, [], 0.2],
   ['cctv', 'CCTV installation', 'New camera system: survey, supply, install, phone viewing setup.', 'quote', null, [], 0.15],
   ['cctv', 'CCTV repair & maintenance', 'Fault finding, cleaning, re-alignment, DVR/NVR checks.', 'fixed', null,
     o(['Call-out & diagnosis', 20]), 0.2],
@@ -288,20 +297,37 @@ const SERVICES = [
     o(['Placement fee (3-month replacement guarantee)', 60]), 1],
 ];
 
+// Adds any category or service from the lists above that the database doesn't have yet, so new
+// services reach databases that were seeded by an older version. Existing rows (and the prices,
+// commission and live/hidden switch that operations edited) are never changed.
+async function syncCatalog(t) {
+  const have = new Set((await t.all('SELECT id FROM categories')).map((c) => c.id));
+  for (const [i, [id, name, cert, hint]] of CATEGORIES.entries()) {
+    if (have.has(id)) await t.run('UPDATE categories SET sort_order = ? WHERE id = ?', i, id);
+    else await t.run('INSERT INTO categories (id, name, sort_order, certification_required, details_hint) VALUES (?, ?, ?, ?, ?)', id, name, i, cert, hint);
+  }
+  const services = new Set((await t.all('SELECT category_id, name FROM services')).map((s) => `${s.category_id}|${s.name}`));
+  let added = 0;
+  for (const [cat, name, desc, type, unit, options, commission] of SERVICES) {
+    if (services.has(`${cat}|${name}`)) continue;
+    await t.run(
+      'INSERT INTO services (category_id, name, description, pricing_type, unit_label, options, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      cat, name, desc, type, unit, JSON.stringify(options), commission
+    );
+    added += 1;
+  }
+  return added;
+}
+
 async function seed() {
-  if ((await db.get('SELECT COUNT(*) AS n FROM categories')).n > 0) return;
   const now = new Date().toISOString();
+  let firstRun = false;
+  let added = 0;
 
   await db.tx(async (t) => {
-    for (const [i, [id, name, cert, hint]] of CATEGORIES.entries()) {
-      await t.run('INSERT INTO categories (id, name, sort_order, certification_required, details_hint) VALUES (?, ?, ?, ?, ?)', id, name, i, cert, hint);
-    }
-    for (const [cat, name, desc, type, unit, options, commission] of SERVICES) {
-      await t.run(
-        'INSERT INTO services (category_id, name, description, pricing_type, unit_label, options, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        cat, name, desc, type, unit, JSON.stringify(options), commission
-      );
-    }
+    added = await syncCatalog(t);
+    if ((await t.get('SELECT COUNT(*) AS n FROM users')).n > 0) return;
+    firstRun = true;
 
     const addUser = (role, name, phone, email, password) => t.run(
       'INSERT INTO users (role, name, phone, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
@@ -320,12 +346,16 @@ async function seed() {
          VALUES (?, ?, 'team', 3, '00-000000-X-00', '+263772000002', ?, 'active', ?)`,
         partner.id, 'Demo Garden & Clean Team', JSON.stringify(['Harare – Northern Suburbs', 'Harare – Eastern Suburbs']), now
       );
-      for (const cat of ['lawn', 'yard', 'cleaning']) {
+      for (const cat of ['lawn', 'yard', 'cleaning', 'construction']) {
         await t.run('INSERT INTO provider_skills (provider_id, category_id) VALUES (?, ?)', partner.id, cat);
       }
     }
   });
 
+  if (!firstRun) {
+    if (added) console.log(`Catalogue updated: ${added} new service${added > 1 ? 's' : ''} added.`);
+    return;
+  }
   console.log(`Seeded database. Admin login: ${config.ADMIN_EMAIL}${process.env.ADMIN_PASSWORD ? '' : ' / admin123 (change this before going live)'}`);
   if (config.SEED_DEMO) console.log('Demo logins: home@demo.local / demo123 (homeowner), partner@demo.local / demo123 (partner).');
 }

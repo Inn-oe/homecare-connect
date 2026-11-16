@@ -2,7 +2,7 @@
 
 A home services platform for Zimbabwe. Homeowners book services through the company. The company vets **partner** service providers and dispatches each job to one of them. Partners are paid per job, and the company keeps a commission.
 
-**Services:** grass cutting, yard cleaning, tree cutting, fumigation & pest control, home/carpet/sofa/mattress deep cleaning, CCTV installation & repair, house maids (day maids, part-time, live-in and nanny placements).
+**Services:** grass cutting, yard cleaning, tree cutting, fumigation & pest control, home/carpet/sofa/mattress deep cleaning, post-construction cleaning (new-build and post-renovation cleans, builders' rubble removal, floor & tile restoration, commercial handover cleans), CCTV installation & repair, house maids (day maids, part-time, live-in and nanny placements).
 
 ## Run it
 
@@ -23,9 +23,11 @@ Open http://localhost:3000. The first run creates `data.db` and seeds the catalo
 
 `npm run reset-db` wipes the data and starts fresh.
 
+**Adding services:** add a row to `CATEGORIES` or `SERVICES` in `db.js` and restart. On every start the app adds any category or service the database doesn't have yet. It never changes existing rows, so prices, commission and the live/hidden switch that operations edited are kept.
+
 ## How it works
 
-The app works on phones (bottom navigation bar) and desktops. Visitors can browse services and prices before signing up.
+The app works on phones (bottom navigation bar) and desktops. Visitors can browse and search services and prices before signing up, and the public site has a *Book on WhatsApp* button that opens a chat with `SUPPORT_PHONE`.
 
 **Homeowner:** signs up with their mobile number, searches or browses services, and books in a short step-by-step flow:
 1. Choose an option and quantity.
@@ -34,7 +36,7 @@ The app works on phones (bottom navigation bar) and desktops. Visitors can brows
 4. Add notes and choose how to pay: EcoCash, OneMoney, InnBucks, bank/ZIPIT or cash.
 5. Review and confirm.
 
-The price is shown throughout. Quote-priced work (tree cutting, CCTV installs, termites) books a free site visit instead. After booking, the homeowner tracks the job live, with progress steps from booked to done. Once a partner accepts, they see the partner's name, rating and Call/WhatsApp buttons. They then pay, confirm and rate, or report a problem.
+The price is shown throughout. Quote-priced work (tree cutting, CCTV installs, termites, floor restoration and large post-construction sites) books a free site visit instead. After booking, the homeowner tracks the job live, with progress steps from booked to done. Once a partner accepts, they see the partner's name, rating and Call/WhatsApp buttons. They then pay, confirm and rate, or report a problem.
 
 **Partner:** applies with:
 - national ID
@@ -101,11 +103,11 @@ Demo accounts are never created in production. Build command: `npm install`. Sta
 | File | What's in it |
 |---|---|
 | `server.js` | API: accounts, properties, bookings, the action table that drives the job lifecycle, dispatch ranking, earnings, admin |
-| `db.js` | SQLite schema and seed catalog (categories, services, prices) |
+| `db.js` | Schema, SQLite/PostgreSQL drivers and the service catalogue (categories, services, prices), synced into the database on start |
 | `auth.js` | Password hashing (scrypt) and signed login tokens |
 | `config.js` | Company name, zones, payment methods, payment instructions |
-| `public/app.js` | The web app: public site, booking wizard, homeowner/partner/operations screens (hash routes, so the back button works) |
-| `public/styles.css` | Design system: colours, buttons, cards, choice tiles, progress tracker, mobile layout |
+| `public/app.js` | The web app: public landing page, booking wizard, homeowner/partner/operations screens (hash routes, so the back button works) |
+| `public/styles.css` | Design system: colours, buttons, cards, choice tiles, progress tracker, landing page sections, mobile layout |
 
 ## Next phases
 
