@@ -367,7 +367,7 @@ function parseRoute() {
 const NAV = {
   homeowner: [['', 'Home', 'home'], ['bookings', 'My bookings', 'calendar'], ['account', 'Account', 'user']],
   provider: [['', 'Jobs', 'briefcase'], ['history', 'History', 'list'], ['earnings', 'Earnings', 'wallet'], ['account', 'Account', 'user']],
-  admin: [['', 'Dashboard', 'chart'], ['bookings', 'Bookings', 'calendar'], ['partners', 'Partners', 'users'], ['settlements', 'Payouts', 'wallet'], ['services', 'Prices', 'tag'], ['account', 'Account', 'user']],
+  admin: [['', 'Dashboard', 'chart'], ['bookings', 'Bookings', 'calendar'], ['partners', 'Partners', 'users'], ['settlements', 'Payouts', 'wallet'], ['services', 'Prices', 'tag'], ['whatsapp', 'WhatsApp', 'chat'], ['account', 'Account', 'user']],
 };
 const NAV_ALIAS = { services: '', book: '', jobs: '' };
 
@@ -493,6 +493,7 @@ const VIEWS = {
     partners: { render: (p, q) => A.partners(q) },
     settlements: { render: () => A.settlements() },
     services: { render: () => A.services() },
+    whatsapp: { render: () => A.whatsapp() },
     account: { render: () => accountPage(), narrow: true },
   },
 };
@@ -1653,7 +1654,44 @@ const A = {
           }).join('')}</div>
         </section>`).join('')}`;
   },
+
+  // WhatsApp bot: connection status and a test chat that talks to the real bot logic.
+  async whatsapp() {
+    const st = await api('/admin/whatsapp');
+    S.wa = S.wa || { from: '', log: [] };
+    const row = (ok, label, hint) => `<div class="row" style="gap:10px;padding:6px 0"><span class="pill ${ok ? 'green' : 'gray'}">${ok ? 'Set' : 'Not set'}</span><div><strong>${label}</strong><div class="small muted">${hint}</div></div></div>`;
+    return `
+      <div class="page-head"><h1>WhatsApp bot</h1>${st.connected ? '<span class="pill green">Connected</span>' : '<span class="pill amber">Test mode</span>'}</div>
+      <p class="muted">Customers can browse prices, book, check their bookings and ask for a person on WhatsApp. Bookings from the bot appear in Bookings like any other.</p>
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <h2 style="margin-top:0">Test chat</h2>
+          <p class="small muted">Chat as any phone number. This runs the real bot and creates real bookings and accounts.</p>
+          <label class="field"><span>Chat as phone number</span><input id="wa-from" inputmode="tel" placeholder="e.g. 0772 123 456" value="${esc(S.wa.from)}"></label>
+          <div id="wa-log" class="wa-log">${waLogHtml()}</div>
+          <form data-form="wa" style="display:flex;gap:8px;margin-top:10px">
+            <input name="text" autocomplete="off" placeholder="Type a message, e.g. hi" style="flex:1;min-width:0" required>
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+          <div class="form-error"></div>
+          <button class="btn sm" style="margin-top:8px" data-act="wa-clear" type="button">Clear chat</button>
+        </div>
+        <div class="card">
+          <h2 style="margin-top:0">Connect your WhatsApp number</h2>
+          ${row(st.connected, 'WA_ACCESS_TOKEN and WA_PHONE_NUMBER_ID', 'From Meta for Developers, WhatsApp, API Setup. Use a permanent system-user token.')}
+          ${row(st.verifyTokenSet, 'WA_VERIFY_TOKEN', 'Any secret word. Type the same word in Meta when you add the webhook.')}
+          ${row(st.signatureCheck, 'WA_APP_SECRET', 'Your Meta app secret, so only Meta can call the webhook.')}
+          ${row(!!st.opsNumber, 'WA_OPS_NUMBER', 'Optional. Gets an alert for new bot bookings and requests for a person.')}
+          <p class="small" style="margin-top:12px">Webhook URL for Meta:<br><code>${esc(location.origin + st.webhookPath)}</code><br>Subscribe it to the <strong>messages</strong> field.</p>
+        </div>
+      </div>`;
+  },
 };
+
+function waLogHtml() {
+  if (!S.wa.log.length) return '<p class="small muted" style="text-align:center;margin:40px 0">Say "hi" to start.</p>';
+  return S.wa.log.map((m) => `<div class="wa-msg ${m.me ? 'me' : 'bot'}">${esc(m.text).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/\n/g, '<br>')}</div>`).join('');
+}
 
 // ---------------------------------------------------------------------------
 // Account (all roles)
@@ -1748,6 +1786,7 @@ async function runAction(id, action, body = {}, success = 'Done') {
 const CLICKS = {
   logout,
   reload: () => route(),
+  'wa-clear': () => { S.wa.log = []; $('#wa-log').innerHTML = waLogHtml(); },
   scroll: (el) => document.getElementById(el.dataset.target)?.scrollIntoView({ behavior: 'smooth' }),
   'close-modal': closeModal,
   dialog(el) {
@@ -1958,6 +1997,20 @@ document.addEventListener('change', async (e) => {
 });
 
 const FORMS = {
+  async wa(form, data) {
+    const from = $('#wa-from').value.trim();
+    if (!from) throw new Error('Enter the phone number to chat as');
+    S.wa.from = from;
+    S.wa.log.push({ me: true, text: data.text });
+    form.reset();
+    const { replies } = await api('/admin/whatsapp/simulate', { method: 'POST', body: { from: from.replace(/^0/, '263'), text: data.text } });
+    if (!replies.length) replies.push('(The bot stays quiet: this chat was handed to a person. Type "menu" to wake it.)');
+    for (const r of replies) S.wa.log.push({ me: false, text: r });
+    const log = $('#wa-log');
+    log.innerHTML = waLogHtml();
+    log.scrollTop = log.scrollHeight;
+    form.querySelector('input').focus();
+  },
   async login(form, data) {
     startSession(await api('/auth/login', { method: 'POST', body: data }));
   },

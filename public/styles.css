@@ -630,3 +630,9 @@ details.svc form { padding: 4px 16px 16px; }
   .landing-header .logo span:last-child { font-size: .86rem; }
   .landing-header .btn.sm { padding: 6px 9px; font-size: .82rem; }
 }
+
+/* WhatsApp test chat */
+.wa-log { background: #efeae2; border-radius: 12px; padding: 12px; height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.wa-msg { max-width: 85%; padding: 8px 11px; border-radius: 10px; font-size: 14px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0,0,0,.08); word-wrap: break-word; }
+.wa-msg.bot { background: #fff; align-self: flex-start; }
+.wa-msg.me { background: #d9fdd3; align-self: flex-end; }

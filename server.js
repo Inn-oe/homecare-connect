@@ -7,7 +7,8 @@ const config = require('./config');
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '100kb' }));
+// rawBody is kept so the WhatsApp webhook can check Meta's signature.
+app.use(express.json({ limit: '100kb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/healthz', (_req, res) => res.send('ok'));
 
@@ -284,10 +285,10 @@ function canSee(b, user) {
   return user.role === 'admin' || b.homeowner_id === user.id || b.provider_id === user.id;
 }
 
-app.post('/api/bookings', requireRole('homeowner'), async (req, res) => {
-  const b = req.body || {};
+// Shared by the web app and the WhatsApp bot. Returns the new booking's id.
+async function createBooking(userId, b) {
   const service = await db.get('SELECT * FROM services WHERE id = ? AND active = 1', Number(b.service_id)) || fail(404, 'Service not found');
-  const property = await db.get('SELECT * FROM properties WHERE id = ? AND owner_id = ?', Number(b.property_id), req.user.id)
+  const property = await db.get('SELECT * FROM properties WHERE id = ? AND owner_id = ?', Number(b.property_id), userId)
     || fail(400, 'Choose one of your properties');
   const scheduled = new Date(b.scheduled_for);
   if (isNaN(scheduled)) fail(400, 'Choose a date and time');
@@ -311,17 +312,21 @@ app.post('/api/bookings', requireRole('homeowner'), async (req, res) => {
     status = 'confirmed';
   }
 
-  const id = await db.tx(async (t) => {
+  return db.tx(async (t) => {
     const { id } = await t.run(
       `INSERT INTO bookings (homeowner_id, property_id, service_id, option_label, quantity, details, scheduled_for, status,
                              price, commission_rate, payment_method, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      req.user.id, property.id, service.id, optionLabel, quantity, details, scheduled.toISOString(), status,
+      userId, property.id, service.id, optionLabel, quantity, details, scheduled.toISOString(), status,
       price, service.commission_rate, b.payment_method, now(), now()
     );
-    await logEvent(t, id, req.user.id, 'create', status, status === 'quote_requested' ? 'Site survey / quote requested' : null);
+    await logEvent(t, id, userId, 'create', status, status === 'quote_requested' ? 'Site survey / quote requested' : null);
     return id;
   });
+}
+
+app.post('/api/bookings', requireRole('homeowner'), async (req, res) => {
+  const id = await createBooking(req.user.id, req.body || {});
   res.status(201).json(present(await loadBooking(id), req.user));
 });
 
@@ -669,6 +674,12 @@ app.put('/api/admin/services/:id', requireRole('admin'), async (req, res) => {
   await db.run('UPDATE services SET options = ?, commission_rate = ?, active = ? WHERE id = ?',
     JSON.stringify(options), commission, b.active ? 1 : 0, service.id);
   res.json({ ...(await db.get('SELECT * FROM services WHERE id = ?', service.id)), options });
+});
+
+// ---- WhatsApp chatbot -------------------------------------------------------
+
+require('./whatsapp').mount(app, {
+  db, config, catalog, createBooking, loadBooking, normalizePhone, hashPassword, now, requireRole, HttpError,
 });
 
 // ---- Errors ----------------------------------------------------------------

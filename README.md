@@ -95,8 +95,22 @@ The app uses **PostgreSQL** when `DATABASE_URL` is set, and a local SQLite file 
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | First operations account, created when the database is empty. Change the password after first login |
 | `ADMIN_PHONE` | Optional, the admin's mobile number |
 | `COMPANY_NAME`, `SUPPORT_PHONE`, `PAYMENT_INSTRUCTIONS` | Business details shown in the app |
+| `WA_ACCESS_TOKEN`, `WA_PHONE_NUMBER_ID`, `WA_VERIFY_TOKEN`, `WA_APP_SECRET`, `WA_OPS_NUMBER` | Optional. Connects the WhatsApp chatbot (see below) |
 
 Demo accounts are never created in production. Build command: `npm install`. Start command: `npm start`. Health check path: `/healthz`.
+
+## WhatsApp chatbot
+
+`whatsapp.js` runs a menu-driven bot on the Meta WhatsApp Cloud API. Customers can browse services and prices, book (the bot creates their account and property if needed), check their latest bookings, and ask for a person (the bot then stays quiet in that chat for 12 hours, or until they type *menu*).
+
+Admins can test it under **WhatsApp** in the operations app before any number is connected. To connect a real number:
+
+1. In Meta for Developers, create a Business app, add the WhatsApp product and register your business phone number.
+2. Create a permanent token (Business settings, System users) with `whatsapp_business_messaging`.
+3. Set `WA_ACCESS_TOKEN`, `WA_PHONE_NUMBER_ID`, `WA_VERIFY_TOKEN` (any secret word) and `WA_APP_SECRET` on the server.
+4. In the app's WhatsApp configuration, set the webhook to `https://<your-domain>/webhook/whatsapp` with the same verify token, and subscribe to **messages**.
+
+The bot only replies inside the 24-hour window the customer opens, so it needs no message templates. Chat state is kept in memory and resets on restart.
 
 ## Code map
 
@@ -105,6 +119,7 @@ Demo accounts are never created in production. Build command: `npm install`. Sta
 | `server.js` | API: accounts, properties, bookings, the action table that drives the job lifecycle, dispatch ranking, earnings, admin |
 | `db.js` | Schema, SQLite/PostgreSQL drivers and the service catalogue (categories, services, prices), synced into the database on start |
 | `auth.js` | Password hashing (scrypt) and signed login tokens |
+| `whatsapp.js` | WhatsApp chatbot: Meta webhook, the menu conversation, and the admin test console API |
 | `config.js` | Company name, zones, payment methods, payment instructions |
 | `public/app.js` | The web app: public landing page, booking wizard, homeowner/partner/operations screens (hash routes, so the back button works) |
 | `public/styles.css` | Design system: colours, buttons, cards, choice tiles, progress tracker, landing page sections, mobile layout |
