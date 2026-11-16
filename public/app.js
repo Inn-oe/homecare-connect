@@ -1,5 +1,5 @@
 'use strict';
-// HomeCare Connect web app: public site + three role apps (homeowner, partner, operations).
+// BrownTaks Homecare web app: public site + three role apps (homeowner, partner, operations).
 // Hash routes (#/bookings/12) so the browser back button works everywhere.
 
 const S = {

@@ -1,4 +1,4 @@
-# HomeCare Connect (Phase 1 MVP)
+# BrownTaks Homecare (Phase 1 MVP)
 
 A home services platform for Zimbabwe. Homeowners book services through the company. The company vets **partner** service providers and dispatches each job to one of them. Partners are paid per job, and the company keeps a commission.
 

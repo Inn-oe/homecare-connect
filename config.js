@@ -6,7 +6,7 @@ if (production) {
 }
 
 module.exports = {
-  COMPANY_NAME: process.env.COMPANY_NAME || 'HomeCare Connect',
+  COMPANY_NAME: process.env.COMPANY_NAME || 'BrownTaks Homecare',
   CURRENCY: 'USD',
   PORT: Number(process.env.PORT) || 3000,
 
