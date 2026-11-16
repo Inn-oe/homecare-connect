@@ -155,6 +155,7 @@ const ICONS = {
   sparkle: '<path d="M11 3l1.8 4.7 4.7 1.8-4.7 1.8L11 16l-1.8-4.7L4.5 9.5l4.7-1.8z"/><path d="M18.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/>',
   camera: '<path d="M2.5 7.5 15 4l2 6-12.5 3.5z"/><path d="m17 8 4-1v5l-3.5 1M9 12.5V17H4M4 15v4"/>',
   maid: '<circle cx="12" cy="5.5" r="2.8"/><path d="M8.5 11h7l2 10h-11z"/><path d="M10 11l2 3 2-3"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/>',
   hardhat: '<path d="M2 18h20"/><path d="M4 18v-3a8 8 0 0 1 16 0v3"/><path d="M10 7.3V5h4v2.3"/><path d="M10 7v5M14 7v5"/>',
 };
 const icon = (name, size = 20) =>
@@ -167,6 +168,7 @@ const CAT_STYLE = {
   fumigation: ['bug', '#fdecea', '#b42318'],
   cleaning: ['sparkle', '#e6effb', '#1b5aa6'],
   construction: ['hardhat', '#fff0dc', '#b45309'],
+  property: ['key', '#e0f2f4', '#0e6674'],
   cctv: ['camera', '#ecebfb', '#4636a3'],
   maids: ['maid', '#fbeaf3', '#a3326b'],
 };
@@ -182,6 +184,7 @@ const CAT_BLURB = {
   fumigation: 'Cockroaches, bedbugs, rodents, mosquitoes and termites.',
   cleaning: 'Deep cleans, move-in cleans, carpets, sofas and mattresses.',
   construction: "Builders' dust, cement and paint cleared so you can move in.",
+  property: 'Registered agents who find rentals, show properties and list yours.',
   cctv: 'Camera systems installed and repaired, with phone viewing.',
   maids: 'Vetted day maids, live-in maids, nannies and housekeepers.',
 };
@@ -192,6 +195,7 @@ const CAT_KEYWORDS = {
   fumigation: 'pests pest insects cockroaches rats mice mosquitoes bed bugs spray',
   cleaning: 'cleaner clean wash couch upholstery spring',
   construction: 'builders builder building after construction renovation renovations new house handover dust cement paint site',
+  property: 'agent agents estate rent rental renting house flat apartment room cottage lease landlord tenant tenants property buy sell sale viewing',
   cctv: 'camera cameras security dvr alarm',
   maids: 'maid helper domestic worker nanny housekeeper housegirl',
 };
@@ -702,6 +706,7 @@ function publicCategory(catId) {
 
 function categoryBody(c, bookBase) {
   const notes = {
+    property: 'Agents are registered estate agents or work under a registered agency. Their fee is agreed with you in writing before they start, and you never pay a deposit to an agent outside the app.',
     maids: 'Every maid is interviewed and has a police clearance, medical certificate and references. Placements come with a 3-month free replacement guarantee. You agree the salary directly with the maid.',
     fumigation: 'Our fumigation partners are licensed to handle pesticides. You will get safety instructions (when to leave the house and for how long) before the job.',
     trees: 'Tree work is done by insured, trained teams. A specialist visits first and gives you a free quote.',
